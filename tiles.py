@@ -1,3 +1,19 @@
+def get_connector(face):
+  if face == 0:
+    return (0, 1)
+  if face == 1:
+    return (1, 0)
+  if face == 2:
+    return (0, -1)
+  if face == 3:
+    return (-1, 0)
+def get_op(face):
+  if face <= 1:
+    return face+2
+  else:
+    return face-2
+
+
 class Flow:
   def __init__(self, amount, prefix):
     self.amount = amount
@@ -14,12 +30,12 @@ class ElectricCurrent(Flow):
 
 class BulkFlow(Flow):
   def __init__(self, weight, itype):
-    super.__init__(amount, 'pounds')
-    self.itypes = items
+    super.__init__(weight, 'pounds')
+    self.itype = itype
 
 class MixedFlow(Flow):
   def __init__(self, weight, items):
-    super.__init__(amount, 'pounds'):
+    super.__init__(weight, 'pounds')
     self.items = items
 
 class Attachment:
@@ -47,16 +63,19 @@ class Tank(Attachment):
     else:
       fill += inp.amount
   def output(self, amount):
-    o = FluidFlow()
+    o = FluidFlow(0, self.fill_type)
     if amount > fill:
     
-      t, f = fill_type, fill
+      o.amount = fill
       fill = 0
       fill_type = None
-      return t, f
+      return o
     else:
       fill -= amount
-      return fill_type, fill
+      o.amount = amount
+      return o
+  def tick(self):
+    pass
       
   
 class Tile:
@@ -71,9 +90,10 @@ class Block(Tile):
     super.__init__(name, src, pos, grid)
 
 class Single(Block):
-  def __init__(self, name, src, pos, grid, attachments, voltage, connectors):
+  def __init__(self, name, src, pos, grid, attachments, hatches, voltage, connectors):
     super.__init__(name, src, pos, grid)
     self.attachments = attachments
+    self.hatches = hatches
     self.prime_capacitor = 0
     self.input_tanks = [1]
     self.output_tanks = [2]
@@ -85,18 +105,32 @@ class Single(Block):
     # (0, -1) = 2
     # (-1, 0) = 3
     # -1 = no connection
-  def input(face, inp):
-    id = connectors[face]
-    attachments[id].input(inp)
-  def get_connect(face):
+  def input(self, face, inp):
+    id = self.connectors[face]
+    self.attachments[id].input(inp)
+  def get_connect(self, face):
     
   
       
-    id = connectors[face]
+    id = self.connectors[face]
     return self.attachments[id]
-  def id_get(id):
+  def id_get(self, id):
     return self.attachments[id]
-  def get_neighbor(face):
+  def get_neighbor(self, face):
+    fp = get_connector(face)
+    x = self.pos[0]+fp[0]
+    y = self.pos[1]+fp[1]
+    return self.grid[x][y]
+  def tick(self):
+    for a in self.attachments:
+      pass
+    for h in self.hatches:
+      movement, energy = h.tick()
+      tokens = movement.split()
+      t = int(tokens[1])
+      o = None
+      if tokens[0][0] == '%':
+        o = self.attachments[int(tokens[0][1:])]
     
 
 class Hatch:
@@ -104,10 +138,10 @@ class Hatch:
     pass
 
 class Pump(Hatch):
-  def __init__(self, host, draw, transfer_rate, face):
-    self.host = host
+  def __init__(self, draw, transfer_rate, face, apt, v):
     self.draw = draw
     self.tr = transfer_rate
     self.face = face
+    self.current = ElectricCurrent(apt, v)
   def tick(self):
-    
+    return f"%{self.draw} {self.transfer_rate} [neighbor]", self.current
